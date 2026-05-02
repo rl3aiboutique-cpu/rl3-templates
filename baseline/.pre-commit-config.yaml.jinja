@@ -61,8 +61,10 @@ repos:
       - id: no-commit-to-branch
         args:
           - "--branch={{ production_branch }}"
+{%- if enable_branch_policy %}
           - "--branch={{ integration_branch }}"
           - "--pattern=^release/"
+{%- endif %}
       - id: check-executables-have-shebangs
 
   # ─── Block 2: secrets + supply chain ────────────────────────────────────
@@ -329,7 +331,8 @@ repos:
         language: system
         stages: [commit-msg]
 
-      # Branch policy (pre-push)
+{% if enable_branch_policy %}
+      # Branch policy (pre-push) — disabled when enable_branch_policy=false
       - id: branch-naming
         name: branch name <prefix>/<git-username>/<slug>
         entry: bash scripts/hooks/check-branch-name.sh
@@ -353,6 +356,7 @@ repos:
         always_run: true
         pass_filenames: false
         stages: [pre-push]
+{% endif %}
 
 {% if include_pre_push_tier %}
 {% if has_typescript %}

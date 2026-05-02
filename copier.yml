@@ -146,6 +146,20 @@ integration_branch:
   default: develop
   help: "Integration branch — feature PRs target this."
 
+enable_branch_policy:
+  type: bool
+  default: true
+  help: |
+    Enforce the full <prefix>/<git-username>/<slug> branch policy?
+    true  — full 5-branch flow (feature/bugfix/chore/release/hotfix → develop → master).
+            Pre-push hooks (branch-naming, no-direct-push, branch-source-base) ON.
+            Claude deny-list blocks pushes/checkouts to integration_branch.
+    false — single-branch repos (e.g. small libraries with release-please).
+            Skips branch-naming, no-direct-push, branch-source-base hooks.
+            Claude deny-list keeps --no-verify / --force / .env / generated-file rules
+            but drops the integration-branch entries.
+            Use for: rl3-ci, small workflow libraries, single-maintainer tools.
+
 # ── Tasks (idempotent — safe to re-run on update) ──────────────────────────
 # Each install task short-circuits silently if either (a) the destination
 # is not a git repo or (b) pre-commit is not on PATH. The dev sees a single

@@ -4,6 +4,7 @@ This file provides guidance to Claude Code (and other AI coding agents) when wor
 
 <!-- rl3-templates: managed BEGIN — do not hand-edit between these markers. Run `copier update` to refresh. -->
 
+{% if enable_branch_policy %}
 ## Branching policy (NON-NEGOTIABLE)
 
 **Branch shape:**
@@ -36,6 +37,25 @@ The `<git-username>` segment is `git config user.name`, normalised to lowercase 
 - Editing `.env` / `.env.*` (only `.env.example` is committed).
 - Editing generated files: `routeTree.gen.ts`{% if has_typescript %}, `{{ frontend_dir }}/src/client/*`{% endif %}, `*.lock`, `*_pb2.py`, `.copier-answers.yml`.
 - Adding `Co-Authored-By: Claude` (or any model attribution) to commit messages, code comments, or docs.
+{% else %}
+## Branching policy (LIGHTWEIGHT)
+
+This repository uses a **single-branch flow**: all work lands on `{{ production_branch }}`. Releases are managed by `release-please` (or equivalent) — direct pushes by maintainers are permitted but discouraged in favour of PRs.
+
+The full `<prefix>/<git-username>/<slug>` policy is **not enforced** — the consumer opted out via `enable_branch_policy: false` in `.copier-answers.yml`. To re-enable later, set the flag to `true` and run `copier update`.
+
+### Forbidden actions for the agent (still enforced)
+
+- `git commit --no-verify` / `git push --no-verify` / `git commit -n` — if a hook is wrong, fix the hook.
+- `git push --force` — use `--force-with-lease` (refuses if remote moved).
+- `git reset --hard` / `git clean -f` / `git checkout .` — destructive.
+- `git config --global` modifications.
+- `pip install` (use `uv add`).
+- `npm install` without lockfile.
+- Editing `.env` / `.env.*` (only `.env.example` is committed).
+- Editing generated files: `*.lock`, `*_pb2.py`, `.copier-answers.yml`.
+- Adding `Co-Authored-By: Claude` (or any model attribution) to commit messages, code comments, or docs.
+{% endif %}
 
 ## Local pre-commit gates
 
@@ -64,7 +84,9 @@ Three stages: pre-commit (fast file-level), commit-msg, pre-push (heavier).
 - No `Co-Authored-By: Claude` trailer.
 
 ### Pre-push
+{%- if enable_branch_policy %}
 - Branch policy: `<prefix>/<git-username>/<slug>` shape; refuse push to `{{ production_branch }}` / `{{ integration_branch }}`; verify branch source (feature/* descend from `{{ integration_branch }}`, hotfix/* descend from `{{ production_branch }}`).
+{%- endif %}
 {%- if include_pre_push_tier %}
 {%- if has_typescript %}
 - `tsc --noEmit` for TypeScript.

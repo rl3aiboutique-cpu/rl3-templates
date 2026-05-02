@@ -1,0 +1,129 @@
+name: ci
+
+# rl3-templates self-CI. Lints shell scripts, validates workflow YAML,
+# parses Jinja templates, runs the full validation suite, and uploads
+# the STATUS.md report as an artefact.
+#
+# Standalone — no rl3-ci coupling (Phase 1 non-negotiable).
+
+on:
+  pull_request:
+    branches: [develop, master]
+  push:
+    branches: [develop, master]
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  shellcheck:
+    name: shellcheck (hook scripts + tests)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Run shellcheck
+        run: |
+          set -euo pipefail
+          fail=0
+          while IFS= read -r f; do
+            shellcheck "$f" || fail=1
+          done < <(find baseline/scripts tests -type f -name '*.sh')
+          exit $fail
+
+  actionlint:
+    name: actionlint (workflow YAML)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Install actionlint
+        run: |
+          set -euo pipefail
+          bash <(curl -sSL https://raw.githubusercontent.com/rhysd/actionlint/main/scripts/download-actionlint.bash)
+          ./actionlint --version
+
+      - name: Lint our own workflow + the rendered template-drift workflow
+        run: |
+          ./actionlint -color \
+            .github/workflows/*.yml \
+            baseline/.github/workflows/*.yml
+
+  jinja-syntax:
+    name: jinja parse (.jinja files)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.13"
+
+      - name: Install jinja2 + pyyaml
+        run: pip install jinja2 pyyaml
+
+      - name: Parse every .jinja under baseline/
+        run: |
+          python3 - <<'PY'
+          import os, sys
+          from jinja2 import Environment, FileSystemLoader
+          env = Environment(loader=FileSystemLoader("baseline"))
+          failed = False
+          for root, _, files in os.walk("baseline"):
+              for f in files:
+                  if f.endswith(".jinja"):
+                      rel = os.path.relpath(os.path.join(root, f), "baseline")
+                      try:
+                          env.get_template(rel)
+                          print(f"OK   {rel}")
+                      except Exception as e:
+                          print(f"FAIL {rel}: {e}")
+                          failed = True
+          sys.exit(1 if failed else 0)
+          PY
+
+  validate:
+    name: validation suite (91 cases)
+    runs-on: ubuntu-latest
+    needs: [shellcheck, actionlint, jinja-syntax]
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.13"
+
+      - name: Install copier + pre-commit
+        run: |
+          pipx install copier
+          pipx install pre-commit
+
+      - name: Configure git identity (validation needs it)
+        run: |
+          git config --global user.name "rl3-templates-ci"
+          git config --global user.email "rl3-templates-ci@users.noreply.github.com"
+
+      - name: Run validation suite
+        env:
+          RL3_TEMPLATES_REPO: ${{ github.workspace }}
+        run: |
+          bash tests/validate.sh
+
+      - name: Print STATUS.md
+        if: always()
+        run: cat /tmp/rl3-validation/STATUS.md
+
+      - name: Upload validation report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: validation-report
+          path: /tmp/rl3-validation/STATUS.md
+          retention-days: 30

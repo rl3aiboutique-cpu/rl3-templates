@@ -5,8 +5,10 @@
 
 set -uo pipefail
 
-SBX=/tmp/rl3-validation
-TPL=/Users/laht/projects/AIAgency/rl3-templates
+SBX="${RL3_VALIDATION_SBX:-/tmp/rl3-validation}"
+# TPL = the rl3-templates repo root. Auto-detected as the parent of tests/
+# unless overridden via RL3_TEMPLATES_REPO env var (used in CI).
+TPL="${RL3_TEMPLATES_REPO:-$(cd "$(dirname "$0")/.." && pwd)}"
 STATUS="$SBX/STATUS.md"
 
 # ── 1. Setup ───────────────────────────────────────────────────────────────
@@ -369,7 +371,58 @@ for s in guard-bash.sh guard-write.sh auto-format.sh scan-agent-configs.sh check
   fi
 done
 
-# ── 13. Generate STATUS.md ─────────────────────────────────────────────────
+# ── 13. Lib-shape render (enable_branch_policy=false) ──────────────────────
+echo "=== lib shape (enable_branch_policy=false) ==="
+LIB_SBX="${SBX}-lib"
+rm -rf "$LIB_SBX"
+uvx --quiet --from copier copier copy --quiet --trust --defaults --vcs-ref HEAD \
+  --data project_slug=ci-lib \
+  --data has_python=false --data has_typescript=false --data has_docker=false \
+  --data has_github_actions=true --data enable_branch_policy=false \
+  --data include_pre_push_tier=false --data production_branch=main \
+  "$TPL" "$LIB_SBX" >/dev/null 2>&1
+
+# When enable_branch_policy=false, the 3 branch-policy hooks must NOT render.
+for h in branch-naming no-direct-push branch-source-base; do
+  if grep -q "id: $h" "$LIB_SBX/.pre-commit-config.yaml" 2>/dev/null; then
+    record "lib-shape" "$h hook absent" "FAIL" "$h leaked into lib render"
+  else
+    record "lib-shape" "$h hook absent" "PASS" "correctly omitted"
+  fi
+done
+
+# no-commit-to-branch should only protect production_branch (main here).
+if grep -A 4 "id: no-commit-to-branch" "$LIB_SBX/.pre-commit-config.yaml" \
+     | grep -q -- "--branch=develop"; then
+  record "lib-shape" "no-commit-to-branch scoped to production only" "FAIL" "develop still in args"
+else
+  record "lib-shape" "no-commit-to-branch scoped to production only" "PASS" "main-only"
+fi
+
+# Claude deny-list must drop integration_branch entries but keep --no-verify, --force.
+out=$(python3 -c "
+import json
+d = json.load(open('$LIB_SBX/.claude/settings.json'))
+deny = d['permissions']['deny']
+git_dev = [e for e in deny if 'develop' in e and 'env' not in e]
+print('git_dev:', len(git_dev))
+print('no_verify:', any('no-verify' in e for e in deny))
+print('force:', any('--force' in e for e in deny))
+")
+if echo "$out" | grep -q "^git_dev: 0$" && echo "$out" | grep -q "no_verify: True" && echo "$out" | grep -q "force: True"; then
+  record "lib-shape" "claude deny-list trimmed correctly" "PASS" "no git+develop, --no-verify and --force kept"
+else
+  record "lib-shape" "claude deny-list trimmed correctly" "FAIL" "$out"
+fi
+
+# CLAUDE.md must say LIGHTWEIGHT.
+if grep -q "Branching policy (LIGHTWEIGHT)" "$LIB_SBX/CLAUDE.md"; then
+  record "lib-shape" "CLAUDE.md uses LIGHTWEIGHT branching section" "PASS" "lightweight branding"
+else
+  record "lib-shape" "CLAUDE.md uses LIGHTWEIGHT branching section" "FAIL" "still NON-NEGOTIABLE"
+fi
+
+# ── 14. Generate STATUS.md ─────────────────────────────────────────────────
 TOTAL=$((PASS + FAIL))
 RATIO=$((PASS * 100 / TOTAL))
 
@@ -398,7 +451,7 @@ RATIO=$((PASS * 100 / TOTAL))
   echo
   echo "## Test categories"
   echo
-  for cat in render guard-bash guard-write branch-name no-direct-push file-lines agent-config-scan claude-settings pre-commit-config; do
+  for cat in render guard-bash guard-write branch-name no-direct-push file-lines agent-config-scan claude-settings pre-commit-config lib-shape; do
     n=0; p=0
     for row in "${ROWS[@]}"; do
       rc="${row%%|*}"
@@ -415,7 +468,7 @@ RATIO=$((PASS * 100 / TOTAL))
   echo "## Detailed results"
   echo
 
-  for cat in render guard-bash guard-write branch-name no-direct-push file-lines agent-config-scan claude-settings pre-commit-config; do
+  for cat in render guard-bash guard-write branch-name no-direct-push file-lines agent-config-scan claude-settings pre-commit-config lib-shape; do
     pretty=$(echo "$cat" | tr '-' ' ')
     echo "### $pretty"
     echo

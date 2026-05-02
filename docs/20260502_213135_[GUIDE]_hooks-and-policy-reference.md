@@ -476,6 +476,28 @@ These are the answers `copier copy` collects. Defaults shown in **bold**.
 |---|---|---|---|
 | `production_branch` | choice | `master` (default), `main` | Threads into `no-commit-to-branch`, `no-direct-push.sh`, Claude deny-list, `setup-branch-protection.sh`. |
 | `integration_branch` | str | **`develop`** | Same. |
+| `enable_branch_policy` | bool | **`true`** | When `true`, full 5-branch flow with develop. When `false`, lib mode — see §6.5.1. |
+
+#### 6.5.1 `enable_branch_policy: false` (lib mode)
+
+For small libraries, single-maintainer tools, or workflow-only repos (e.g. `rl3-ci`) where the 5-branch flow is overkill. When `false`:
+
+| Aspect | Effect |
+|---|---|
+| `.pre-commit-config.yaml` | `branch-naming`, `no-direct-push`, `branch-source-base` hooks **omitted**. `no-commit-to-branch` keeps only `--branch={{ production_branch }}`. |
+| `.claude/settings.json` deny | Drops integration-branch entries (`git push origin develop`, `git checkout develop`, etc.). Keeps `--no-verify`, `--force`, `pip install`, `.env`, generated-file rules. |
+| `.claude/settings.json` allow | Reduces to `Bash(git push --force-with-lease *)` (single entry). |
+| `CLAUDE.md` | Branching section retitled "LIGHTWEIGHT" with a one-paragraph note instead of the full routing matrix. The forbidden-actions list keeps everything except branch-routing rules. |
+
+When to use:
+
+- **`rl3-ci`** — workflow library, single-branch with release-please.
+- Single-maintainer libraries that publish via release-please / changesets.
+- Mirrors and read-only forks.
+
+When **not** to use:
+
+- Any application repo (web app, CLI consumed by users, service). Keep `enable_branch_policy: true` to enforce review discipline.
 
 ## 7. Testing
 

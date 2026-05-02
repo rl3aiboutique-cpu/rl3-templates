@@ -17,9 +17,12 @@ Phase 1 is intentionally **standalone** — no `codi` or `rl3-ci` coupling. Both
 
 | Phase | Adds | Trigger |
 |---|---|---|
-| 1 | Hooks + agent guardrails (this release) | Done — `v0.1.0` |
+| 1 | Hooks + agent guardrails | Done — `v0.1.0` |
+| 1.5 | `enable_branch_policy` flag (lib mode) + self-CI workflow | Done — `v0.2.0` |
 | 2 | `enable_rl3_ci` flag → renders thin CI caller targeting `rl3-ci@v1` | After 3+ consumer-repo retrofits |
 | 3 | `enable_codi` flag → renders `.codi/` skeleton + skill tracker / observer | After Phase 2 stable |
+
+**Lib mode** (`enable_branch_policy: false`) — for small libraries / workflow-only repos like `rl3-ci`. Skips the 5-branch flow but keeps every other guard. See `[GUIDE]` §6.5.1 for the exact differences.
 
 ## Quick start (consumer repo)
 
