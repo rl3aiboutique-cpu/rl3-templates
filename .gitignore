@@ -1,0 +1,39 @@
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+
+# IDE / editors
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Python (defensive — rl3-templates itself ships no Python runtime)
+__pycache__/
+*.py[cod]
+.venv/
+.mypy_cache/
+.pyright/
+.ruff_cache/
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Node (defensive — same reason)
+node_modules/
+*.log
+.pnpm-debug.log*
+
+# Copier render artefacts (smoke tests rendered into local sandboxes)
+/_self/
+/.smoke/
+
+# Secrets — never commit any .env even from a smoke render
+.env
+.env.*
+!.env.example
+
+# Agent local config that should never leave the machine
+.claude/settings.local.json
