@@ -1,0 +1,9 @@
+[codespell]
+# Files / dirs to skip — generated code, binaries, lockfiles.
+skip = *.lock,*.svg,*.png,*.jpg,*.jpeg,*.gif,*.ico,*.woff,*.woff2,*.ttf,*.pdf,*.xlsx,*.min.*,**/alembic/versions/*,**/email-templates/build/*,**/dist/*,**/node_modules/*,**/src/client/*,**/.venv/*,**/.git/*,docs/evidence/*
+
+# Domain-specific terms that codespell flags by mistake.
+# Override per repo via the local .codespellrc which extends this file.
+ignore-words-list = ubo,mlro,ans,keypair,thru,checkin,wont,medias,quater,quinquies,sexies,crate,re-declares,mis-match,nd,te
+
+# No auto-write — the hook fails so the developer corrects manually.

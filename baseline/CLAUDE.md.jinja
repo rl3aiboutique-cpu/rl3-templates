@@ -1,0 +1,122 @@
+# CLAUDE.md — {{ project_slug }}
+
+This file provides guidance to Claude Code (and other AI coding agents) when working with code in this repository.
+
+<!-- rl3-templates: managed BEGIN — do not hand-edit between these markers. Run `copier update` to refresh. -->
+
+{% if enable_branch_policy %}
+## Branching policy (NON-NEGOTIABLE)
+
+**Branch shape:**
+
+```
+<prefix>/<git-username>/<slug>           # e.g. feature/lehidalgo/add-csv-export
+<prefix>/<git-username>/<TICKET>-<slug>  # e.g. feature/lehidalgo/{{ ticket_prefix }}-142-add-csv-export
+```
+
+| Prefix | Branched from | PR target | Reviewers | Use case |
+|---|---|---|---|---|
+| `feature/` | `{{ integration_branch }}` | `{{ integration_branch }}` | 1 | New feature |
+| `bugfix/` | `{{ integration_branch }}` | `{{ integration_branch }}` | 1 | Non-urgent bug fix |
+| `chore/` | `{{ integration_branch }}` | `{{ integration_branch }}` | 1 | Tooling, deps, docs |
+| `release/` | `{{ integration_branch }}` | `{{ production_branch }}` | 2 | Release PR |
+| `hotfix/` | `{{ production_branch }}` | `{{ production_branch }}` (then back-merge to `{{ integration_branch }}`) | 1 (fast) | Production fix |
+
+The `<git-username>` segment is `git config user.name`, normalised to lowercase kebab. It enforces ownership across contributors.
+
+### Forbidden actions for the agent
+
+- Direct push to `{{ production_branch }}`, `main`, or `{{ integration_branch }}` — three-layer block (pre-push hook, Claude deny-list, GitHub branch protection).
+- `git commit --no-verify` / `git push --no-verify` / `git commit -n` — if a hook is wrong, fix the hook.
+- `git push --force` — use `--force-with-lease` (refuses if remote moved).
+- Checking out `{{ production_branch }}` / `{{ integration_branch }}` — stay on a feature branch and use `git fetch + git merge origin/<branch>` to integrate.
+- `git reset --hard` / `git clean -f` / `git checkout .` — destructive.
+- `git config --global` modifications.
+- `pip install` (use `uv add`).
+- `npm install` without lockfile.
+- Editing `.env` / `.env.*` (only `.env.example` is committed).
+- Editing generated files: `routeTree.gen.ts`{% if has_typescript %}, `{{ frontend_dir }}/src/client/*`{% endif %}, `*.lock`, `*_pb2.py`, `.copier-answers.yml`.
+- Adding `Co-Authored-By: Claude` (or any model attribution) to commit messages, code comments, or docs.
+{% else %}
+## Branching policy (LIGHTWEIGHT)
+
+This repository uses a **single-branch flow**: all work lands on `{{ production_branch }}`. Releases are managed by `release-please` (or equivalent) — direct pushes by maintainers are permitted but discouraged in favour of PRs.
+
+The full `<prefix>/<git-username>/<slug>` policy is **not enforced** — the consumer opted out via `enable_branch_policy: false` in `.copier-answers.yml`. To re-enable later, set the flag to `true` and run `copier update`.
+
+### Forbidden actions for the agent (still enforced)
+
+- `git commit --no-verify` / `git push --no-verify` / `git commit -n` — if a hook is wrong, fix the hook.
+- `git push --force` — use `--force-with-lease` (refuses if remote moved).
+- `git reset --hard` / `git clean -f` / `git checkout .` — destructive.
+- `git config --global` modifications.
+- `pip install` (use `uv add`).
+- `npm install` without lockfile.
+- Editing `.env` / `.env.*` (only `.env.example` is committed).
+- Editing generated files: `*.lock`, `*_pb2.py`, `.copier-answers.yml`.
+- Adding `Co-Authored-By: Claude` (or any model attribution) to commit messages, code comments, or docs.
+{% endif %}
+
+## Local pre-commit gates
+
+Three stages: pre-commit (fast file-level), commit-msg, pre-push (heavier).
+
+### Pre-commit
+- **Hygiene:** trailing whitespace, EOF, large files (>1MB), merge conflicts, JSON / YAML / TOML syntax, debug statements (`pdb`, `breakpoint`, raw `print` in `.py`), private key detection.
+- **Secrets:** gitleaks + custom MCP / agent-config scanner (`scripts/hooks/scan-agent-configs.sh`) — Sandworm-mode mitigation.
+{%- if enable_anti_slop %}
+- **Anti-slop:** file-line cap ({{ file_line_cap }} lines), orphan-TODO blocker, NotImplementedError stub blocker, Co-Authored-By Claude scanner, generated-file edit blocker.
+{%- endif %}
+{%- if has_python %}
+- **Python:** ruff (lint + format + `S` security rules){% if python_type_checker != "none" %}, {{ python_type_checker }}{% endif %}{% if python_security_scanner in ["bandit", "both"] %}, bandit{% endif %}.
+{%- endif %}
+{%- if has_typescript %}
+- **TypeScript:** biome (lint + format).
+{%- endif %}
+- **Infra:** yamllint{% if has_docker %}, hadolint{% endif %}{% if has_github_actions %}, actionlint{% endif %}, shellcheck{% if has_terraform %}, terraform fmt + tflint{% endif %}{% if has_ansible %}, ansible-lint{% endif %}.
+{%- if spellchecker != "none" %}
+- **Spelling:** {{ spellchecker }}.
+{%- endif %}
+
+### Commit-msg
+- Conventional Commits format (strict): `feat:`, `fix:`, `docs:`, `refactor:`, `test:`, `chore:`, `perf:`, `ci:`, `build:`, `style:`, `revert:`.
+- First line ≤ 72 characters.
+- No `Co-Authored-By: Claude` trailer.
+
+### Pre-push
+{%- if enable_branch_policy %}
+- Branch policy: `<prefix>/<git-username>/<slug>` shape; refuse push to `{{ production_branch }}` / `{{ integration_branch }}`; verify branch source (feature/* descend from `{{ integration_branch }}`, hotfix/* descend from `{{ production_branch }}`).
+{%- endif %}
+{%- if include_pre_push_tier %}
+{%- if has_typescript %}
+- `tsc --noEmit` for TypeScript.
+{%- endif %}
+{%- if has_python %}
+- `pip-audit` against `uv.lock`.
+- `pytest --cov-fail-under={{ coverage_gate }}`.
+{%- endif %}
+{%- endif %}
+
+## Claude Code hooks (`.claude/settings.json`)
+
+These run BEFORE pre-commit ever fires, catching the agent at the source:
+
+- **PreToolUse / Bash** → `scripts/hooks/guard-bash.sh`. Inspects the proposed command; blocks `--no-verify`, `--force` without `-with-lease`, pushes to protected branches, `pip install`, dangerous `rm` / `chmod`, `curl|sh`, `git config --global`.
+- **PreToolUse / Edit / Write / NotebookEdit** → `scripts/hooks/guard-write.sh`. Blocks edits to generated files, `.env`, private keys, lockfiles, `.copier-answers.yml`. Warns on ADR file edits and `pyproject.toml` / `package.json` direct dep edits.
+- **PostToolUse / Edit / Write** → `scripts/hooks/auto-format.sh`. Silent format dispatcher (ruff / biome / terraform fmt / shfmt) — never blocks.
+
+## How this file stays in sync
+
+The content between the `BEGIN` and `END` markers above is generated by `rl3-templates`. To refresh:
+
+```bash
+copier update --skip-answered
+```
+
+A weekly `.github/workflows/template-drift.yml` opens a sync PR automatically. **Add project-specific guidance OUTSIDE the markers** — it survives every `copier update`.
+
+<!-- rl3-templates: managed END -->
+
+## Project-specific notes
+
+Add anything project-specific here. Content above the END marker is replaced on every `copier update`; content here is preserved.
