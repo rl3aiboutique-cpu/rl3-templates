@@ -1,0 +1,30 @@
+extends: default
+
+rules:
+  line-length:
+    max: 200
+    level: warning
+  truthy:
+    allowed-values: ["true", "false"]
+    check-keys: false
+  document-start: disable
+  comments:
+    min-spaces-from-content: 1
+    require-starting-space: true
+  indentation:
+    spaces: 2
+    indent-sequences: consistent
+  braces:
+    max-spaces-inside: 1
+    level: warning
+
+ignore: |
+  node_modules/
+  dist/
+  build/
+  .venv/
+  .codi/
+  .agents/
+  .claude/
+  frontend/src/client/
+  **/*.lock

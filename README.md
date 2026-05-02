@@ -43,12 +43,26 @@ rl3-templates/
 
 ## Branching policy
 
-This repository follows the same policy it ships:
+This repository follows the same policy it ships.
 
-- `master` — production. Receives PRs from `develop`, `release/*`, `hotfix/*`.
-- `develop` — integration. Receives PRs from `feature/*`, `bugfix/*`, `chore/*`, `hotfix/*`.
-- `feature/*`, `bugfix/*`, `chore/*` — branched from `develop`.
-- `hotfix/*` — branched from `master`. Mandatory back-merge to `develop`.
+**Branch shape:** `<prefix>/<git-username>/<slug>` (with optional `<TICKET-ID>-` infix in the slug).
+
+| Prefix | Branched from | PR target | Use case |
+|---|---|---|---|
+| `feature/` | `develop` | `develop` | New feature |
+| `bugfix/` | `develop` | `develop` | Non-urgent bug fix |
+| `chore/` | `develop` | `develop` | Tooling, deps, docs |
+| `release/` | `develop` | `master` | Release PR |
+| `hotfix/` | `master` | `master` (then `develop`) | Production fix + back-merge |
+
+Examples:
+
+- `feature/lehidalgo/add-csv-export`
+- `feature/lehidalgo/RL3-142-add-csv-export`
+- `hotfix/jdoe/CBP-99-fix-payment`
+- `chore/lehidalgo/bump-deps`
+
+The `<git-username>` segment comes from `git config user.name`, normalised to lowercase kebab-case. It enforces ownership and avoids name collisions across contributors.
 
 No direct push to `master` or `develop`. No `--no-verify` for the agent.
 

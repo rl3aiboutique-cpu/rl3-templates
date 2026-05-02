@@ -73,21 +73,29 @@ Phase 1 hooks defend against:
 9. **Generated files cannot be hand-edited**: `routeTree.gen.ts`, `frontend/src/client/**`, `*_pb2.py`, `*.lock`, `.copier-answers.yml`.
 10. **Pre-push tier enabled by default** (pip-audit + pytest cov), gated by flag.
 11. **No direct push to `master` or `develop`.** Three layers: pre-push + agent + branch protection.
-12. **Branch naming mandatory**: `<feature|bugfix|chore|release|hotfix>/<TICKET>-<slug>`.
+12. **Branch naming mandatory**: `<prefix>/<git-username>/<slug>` where prefix ∈ {feature, bugfix, chore, release, hotfix}. Optional `<TICKET-ID>-` infix in the slug. The `<git-username>` segment is derived from `git config user.name` (lowercased, kebab) — enforces ownership.
 13. **PR routing matrix enforced in CI** (Phase 2).
 14. **Hotfixes are not a bypass** — permitted route with own SLA, mandatory back-merge.
 
 ## 6. Branching policy (rendered into every consumer's CLAUDE.md)
 
+Branch shape: `<prefix>/<git-username>/<slug>` (with optional `<TICKET-ID>-` infix).
+
 | Source | Target | Reviewers | Use case |
 |---|---|---|---|
-| `feature/<TICKET>-<slug>` | develop | 1 | New feature |
-| `bugfix/<TICKET>-<slug>` | develop | 1 | Non-urgent bug fix |
-| `chore/<slug>` | develop | 1 | Tooling, deps, docs |
-| `release/v<x.y.z>` | master | 2 | Release PR |
+| `feature/<user>/<slug>` | develop | 1 | New feature |
+| `bugfix/<user>/<slug>` | develop | 1 | Non-urgent bug fix |
+| `chore/<user>/<slug>` | develop | 1 | Tooling, deps, docs |
+| `release/<user>/v<x.y.z>` | master | 2 | Release PR |
 | `develop` | master | 2 | Integration PR |
-| `hotfix/<TICKET>-<slug>` | master | 1 (fast) | Production fix |
-| `hotfix/<TICKET>-<slug>` (auto-opened) | develop | 1 | Mandatory back-merge |
+| `hotfix/<user>/<slug>` | master | 1 (fast) | Production fix |
+| `hotfix/<user>/<slug>` (auto-opened) | develop | 1 | Mandatory back-merge |
+
+Examples:
+
+- `feature/lehidalgo/add-csv-export`
+- `feature/lehidalgo/RL3-142-add-csv-export`
+- `hotfix/jdoe/CBP-99-fix-payment`
 
 Branch sources:
 

@@ -1,0 +1,171 @@
+# rl3-templates — root Copier configuration.
+#
+# Renders the `baseline/` subdirectory into the target repository. Phase 1
+# ships standalone hooks + agent guardrails; codi and rl3-ci coupling are
+# Phase 2 / Phase 3, gated by future flags.
+#
+# Consumer usage:
+#   copier copy gh:rl3aiboutique-cpu/rl3-templates ./my-new-repo
+#
+# Refresh existing project:
+#   copier update
+
+_min_copier_version: "9.0.0"
+_subdirectory: "baseline"
+_templates_suffix: ".jinja"
+_answers_file: ".copier-answers.yml"
+
+# ── Identity ───────────────────────────────────────────────────────────────
+project_slug:
+  type: str
+  help: "Repo name in kebab-case (e.g. capellai-ai-crm). Used in CLAUDE.md and docs."
+  validator: >-
+    {% if not project_slug %}project_slug is required.
+    {% elif ' ' in project_slug %}project_slug must not contain spaces.
+    {% elif project_slug != project_slug.lower() %}project_slug must be lowercase.
+    {% elif project_slug | length < 2 or project_slug | length > 60 %}project_slug must be 2-60 characters.
+    {% endif %}
+
+ticket_prefix:
+  type: str
+  help: "Ticket prefix used in commit messages and TODO refs (e.g. CBP, RL3)."
+  default: "RL3"
+  validator: >-
+    {% if not ticket_prefix %}ticket_prefix is required.
+    {% elif ticket_prefix != ticket_prefix.upper() %}ticket_prefix must be uppercase.
+    {% elif ticket_prefix | length < 2 or ticket_prefix | length > 8 %}ticket_prefix must be 2-8 characters.
+    {% endif %}
+
+# ── Stack detection ────────────────────────────────────────────────────────
+has_python:
+  type: bool
+  default: false
+  help: "Project ships Python code (FastAPI, CLI, scripts)?"
+
+has_typescript:
+  type: bool
+  default: false
+  help: "Project ships TypeScript / JavaScript code (frontend, Node CLI)?"
+
+backend_dir:
+  type: str
+  default: "backend"
+  when: "{{ has_python }}"
+  help: "Subdirectory containing the Python project, relative to repo root."
+
+frontend_dir:
+  type: str
+  default: "frontend"
+  when: "{{ has_typescript }}"
+  help: "Subdirectory containing the TypeScript project."
+
+has_terraform:
+  type: bool
+  default: false
+  help: "Project ships Terraform code (.tf)?"
+
+has_ansible:
+  type: bool
+  default: false
+  help: "Project ships Ansible playbooks?"
+
+has_docker:
+  type: bool
+  default: true
+  help: "Project ships Dockerfiles?"
+
+has_github_actions:
+  type: bool
+  default: true
+  help: "Project ships GitHub Actions workflows (.github/workflows/)?"
+
+# ── Quality gates ──────────────────────────────────────────────────────────
+python_type_checker:
+  type: str
+  choices:
+    - pyright
+    - ty
+    - mypy-strict
+    - none
+  default: pyright
+  when: "{{ has_python }}"
+  help: "Type checker. pyright is the modern default; ty is the Astral Rust-fast cutting edge; mypy-strict is legacy."
+
+python_security_scanner:
+  type: str
+  choices:
+    - ruff-S
+    - bandit
+    - both
+    - none
+  default: ruff-S
+  when: "{{ has_python }}"
+  help: "SAST. ruff-S subsumes ~90% of bandit. Use `both` for repos needing deep XML / serialization / subprocess SAST coverage."
+
+spellchecker:
+  type: str
+  choices:
+    - typos
+    - codespell
+    - none
+  default: typos
+  help: "Spell check engine. typos is Rust-based, ~10x faster than codespell."
+
+coverage_gate:
+  type: int
+  default: 80
+  when: "{{ has_python }}"
+  help: "pytest --cov-fail-under threshold (pre-push tier)."
+
+include_pre_push_tier:
+  type: bool
+  default: true
+  help: "Run pip-audit + pytest cov on pre-push (heavier, ~30s)."
+
+# ── Anti-slop ──────────────────────────────────────────────────────────────
+enable_anti_slop:
+  type: bool
+  default: true
+  help: "Enable file-line cap, orphan-TODO check, NotImplementedError stub block."
+
+file_line_cap:
+  type: int
+  default: 700
+  when: "{{ enable_anti_slop }}"
+  help: "Maximum lines per code file (.py/.ts/.tsx/.js/.jsx/.go/.rs)."
+
+# ── Branch policy ──────────────────────────────────────────────────────────
+production_branch:
+  type: str
+  default: master
+  choices: [master, main]
+  help: "Production branch name. RL3 default is master."
+
+integration_branch:
+  type: str
+  default: develop
+  help: "Integration branch — feature PRs target this."
+
+# ── Tasks (idempotent — safe to re-run on update) ──────────────────────────
+# pre-commit install requires the destination to be a git repository AND
+# pre-commit on PATH. If either is missing, we print a hint and continue.
+_tasks:
+  - "chmod +x scripts/hooks/*.sh 2>/dev/null || true"
+  - 'test -d .git || { echo "HINT: this directory is not a git repo yet — run \"git init\" then \"pre-commit install --install-hooks\" to wire the hooks."; exit 0; }'
+  - "command -v pre-commit >/dev/null 2>&1 && pre-commit install --install-hooks || echo 'HINT: pre-commit not on PATH; install it with \"uv tool install pre-commit\" then run \"pre-commit install --install-hooks\".'"
+  - "command -v pre-commit >/dev/null 2>&1 && test -d .git && pre-commit install --hook-type commit-msg --install-hooks || true"
+  - "{% if include_pre_push_tier %}command -v pre-commit >/dev/null 2>&1 && test -d .git && pre-commit install --hook-type pre-push --install-hooks || true{% else %}true{% endif %}"
+
+_message_after_copy: |
+  rl3-templates baseline rendered.
+
+  Next steps:
+    1. Verify pre-commit hooks installed:  pre-commit run --all-files
+    2. Set up GitHub branch protection:    bash scripts/setup-branch-protection.sh
+    3. Read the rendered CLAUDE.md for the agent contract.
+
+  This template is standalone — no codi or rl3-ci dependency in Phase 1.
+
+_message_after_update: |
+  rl3-templates baseline updated.
+  Review the diff and resolve any .rej conflict files.
