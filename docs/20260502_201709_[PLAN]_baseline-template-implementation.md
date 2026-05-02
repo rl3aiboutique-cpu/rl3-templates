@@ -146,9 +146,11 @@ Emergency override: only two named human admins, configured server-side. Never t
 | 3 | Jinja config templates | `.pre-commit-config.yaml.jinja` (7 blocks), `.claude/settings.json.jinja`, `.gitleaks.toml`, `.yamllint.yaml`, `.codespellrc`. | DONE — squashed into `af4aa4d` |
 | 4 | Drift-detection workflow + branch protection script + CLAUDE.md.jinja | `.github/workflows/template-drift.yml`, `scripts/setup-branch-protection.sh`, `CLAUDE.md.jinja`. | DONE — squashed into `af4aa4d` |
 | 5 | Smoke render | `copier copy` into 4 sandboxes (python, ts, fullstack, infra). All 17 files render; YAML / JSON / CLAUDE.md valid; 7/7 hooks executable; `.copier-answers.yml` persisted; `guard-bash.sh` blocks `--no-verify` in all 4. | DONE — `.copier-answers.yml.jinja` added + `_tasks` consolidated |
-| 6 | Ready-to-push state | Tag `v0.1.0` candidate, [PLAN] doc marked complete, smoke-test tag `v0.0.1-dev` removed. | IN PROGRESS |
+| 6 | Ready-to-push state | Tag `v0.1.0`, [PLAN] doc marked complete, validation suite promoted to `tests/validate.sh`, comprehensive `[GUIDE]` doc authored, README expanded. | DONE — tagged `v0.1.0` |
 
-End of M6 = ready for the separate go-ahead on (a) tag + GitHub push, then (b) retrofit PRs against the 7 consumer repos.
+**Phase 1 complete.** Next steps are separate go-aheads: (a) push to GitHub, (b) retrofit PRs against the 7 consumer repos.
+
+For day-to-day reference, see `docs/<timestamp>_[GUIDE]_hooks-and-policy-reference.md` — the canonical hook + policy reference. The `[PLAN]` doc above is now historical.
 
 ## 9. Deferred — Phase 2 and Phase 3
 
