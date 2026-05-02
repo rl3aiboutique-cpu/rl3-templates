@@ -41,13 +41,15 @@ case "$file_path" in
     ;;
 
   *.tf)
-    command -v terraform >/dev/null 2>&1 \
-      && terraform fmt "$file_path" >/dev/null 2>&1 || true
+    if command -v terraform >/dev/null 2>&1; then
+      terraform fmt "$file_path" >/dev/null 2>&1 || true
+    fi
     ;;
 
   *.sh)
-    command -v shfmt >/dev/null 2>&1 \
-      && shfmt -w "$file_path" >/dev/null 2>&1 || true
+    if command -v shfmt >/dev/null 2>&1; then
+      shfmt -w "$file_path" >/dev/null 2>&1 || true
+    fi
     ;;
 
   *.md | *.yaml | *.yml | *.toml)

@@ -64,15 +64,22 @@ jobs:
         with:
           python-version: "3.13"
 
-      - name: Install jinja2 + pyyaml
-        run: pip install jinja2 pyyaml
+      - name: Install jinja2 + pyyaml + ansible filter extension
+        # jinja2-ansible-filters provides `to_nice_yaml`, `to_yaml`, `to_json`
+        # filters that Copier loads via its built-in extension.
+        # .copier-answers.yml.jinja uses these — without the extension the
+        # parse fails with "No filter named 'to_nice_yaml'".
+        run: pip install jinja2 pyyaml jinja2-ansible-filters
 
       - name: Parse every .jinja under baseline/
         run: |
           python3 - <<'PY'
           import os, sys
           from jinja2 import Environment, FileSystemLoader
-          env = Environment(loader=FileSystemLoader("baseline"))
+          env = Environment(
+              loader=FileSystemLoader("baseline"),
+              extensions=["jinja2_ansible_filters.AnsibleCoreFiltersExtension"],
+          )
           failed = False
           for root, _, files in os.walk("baseline"):
               for f in files:
@@ -88,7 +95,7 @@ jobs:
           PY
 
   validate:
-    name: validation suite (91 cases)
+    name: validation suite (97 cases)
     runs-on: ubuntu-latest
     needs: [shellcheck, actionlint, jinja-syntax]
     steps:
