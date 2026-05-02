@@ -1,0 +1,35 @@
+# rl3-templates baseline gitleaks configuration.
+# Builds on the gitleaks default ruleset; only add allowlist entries here
+# for documented false positives. Do NOT add custom secret patterns —
+# the default ruleset is comprehensive and well-maintained.
+
+title = "rl3-templates baseline gitleaks"
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Permitted false positives across rl3 repositories."
+
+paths = [
+  '''(.+)?\.copier-answers\.yml$''',
+  '''(.+)?docs/.*\.md$''',
+  '''(.+)?\.example$''',
+  '''(.+)?CHANGELOG\.md$''',
+]
+
+regexes = [
+  '''placeholder''',
+  '''example[-_]?token''',
+  '''dummy[-_]?secret''',
+  '''changethis''',
+  '''YOUR_[A-Z_]+_HERE''',
+  '''\$\{[A-Z_]+\}''',
+]
+
+stopwords = [
+  "example",
+  "placeholder",
+  "dummy",
+  "test",
+]
