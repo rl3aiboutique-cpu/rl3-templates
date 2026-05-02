@@ -176,7 +176,7 @@ Lowest risk first:
 
 | # | Item | Status |
 |---|---|---|
-| O1 | GitHub admin handles for `CODEOWNERS` emergency override | OPEN — required before retrofit phase |
+| O1 | GitHub admin handles for `CODEOWNERS` emergency override | RESOLVED — `@lehidalgo` + `@novasvilla` added in `.github/CODEOWNERS` (commit 2026-05-02) |
 | O2 | Smoke-test sandbox location | RESOLVED — `/tmp/rl3-smoke-{python,ts,fullstack,infra}` (transient) |
 | O3 | Versioning policy for the `baseline` template tag | RESOLVED — semver, `v0.1.0` for first GitHub release |
 | O4 | rl3-templates dogfooding its own hooks on itself | OPEN — chicken-and-egg, plan to bootstrap manually post-push |

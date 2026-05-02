@@ -1,0 +1,12 @@
+# rl3-templates CODEOWNERS
+#
+# Two named admins for:
+#   - Final-say review on changes to baseline templates, hook scripts, and the [GUIDE].
+#   - Emergency branch-protection override on master / develop when CI is down or
+#     a production fix cannot wait for the canonical PR-routing flow.
+#
+# Either listed user counts as a code-owner approver. To require both,
+# adjust GitHub branch protection (Settings → Branches) to "require all
+# code owner reviews" — not enforced via CODEOWNERS syntax alone.
+
+* @lehidalgo @novasvilla
