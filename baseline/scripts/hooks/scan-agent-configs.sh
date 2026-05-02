@@ -55,6 +55,9 @@ for target in "${targets[@]}"; do
     done < <(find "$target" -type f -size -100k 2>/dev/null)
   fi
 
+  # Guard against `set -u` + empty array expansion (bash quirk).
+  [ "${#files[@]}" -eq 0 ] && continue
+
   for f in "${files[@]}"; do
     for pat in "${patterns[@]}"; do
       if grep -EHn "$pat" "$f" 2>/dev/null; then

@@ -54,7 +54,8 @@ if echo "$cmd" | grep -qE '(^|[[:space:]])git[[:space:]]+push[[:space:]]+.*--for
   fi
 fi
 
-if echo "$cmd" | grep -qE '(^|[[:space:]])git[[:space:]]+push[[:space:]]+.*[[:space:]]-f([[:space:]]|$)'; then
+# Match `-f` either immediately after `push ` or later as a standalone flag.
+if echo "$cmd" | grep -qE '(^|[[:space:]])git[[:space:]]+push[[:space:]]+(-f|.*[[:space:]]-f)([[:space:]]|$)'; then
   block "git push -f is forbidden. Use --force-with-lease."
 fi
 
