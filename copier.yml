@@ -147,14 +147,12 @@ integration_branch:
   help: "Integration branch — feature PRs target this."
 
 # ── Tasks (idempotent — safe to re-run on update) ──────────────────────────
-# pre-commit install requires the destination to be a git repository AND
-# pre-commit on PATH. If either is missing, we print a hint and continue.
+# Each install task short-circuits silently if either (a) the destination
+# is not a git repo or (b) pre-commit is not on PATH. The dev sees a single
+# HINT block at the end if hooks could not be installed.
 _tasks:
   - "chmod +x scripts/hooks/*.sh 2>/dev/null || true"
-  - 'test -d .git || { echo "HINT: this directory is not a git repo yet — run \"git init\" then \"pre-commit install --install-hooks\" to wire the hooks."; exit 0; }'
-  - "command -v pre-commit >/dev/null 2>&1 && pre-commit install --install-hooks || echo 'HINT: pre-commit not on PATH; install it with \"uv tool install pre-commit\" then run \"pre-commit install --install-hooks\".'"
-  - "command -v pre-commit >/dev/null 2>&1 && test -d .git && pre-commit install --hook-type commit-msg --install-hooks || true"
-  - "{% if include_pre_push_tier %}command -v pre-commit >/dev/null 2>&1 && test -d .git && pre-commit install --hook-type pre-push --install-hooks || true{% else %}true{% endif %}"
+  - 'if test -d .git && command -v pre-commit >/dev/null 2>&1; then pre-commit install --install-hooks >/dev/null && pre-commit install --hook-type commit-msg --install-hooks >/dev/null && {% if include_pre_push_tier %}pre-commit install --hook-type pre-push --install-hooks >/dev/null{% else %}true{% endif %} && echo "✓ pre-commit hooks installed (commit{% if include_pre_push_tier %}, commit-msg, pre-push{% else %}, commit-msg{% endif %})"; else echo "HINT: skipping hook install — run \"git init && uv tool install pre-commit && pre-commit install --install-hooks --hook-type commit-msg{% if include_pre_push_tier %} --hook-type pre-push{% endif %}\" once the repo is initialized."; fi'
 
 _message_after_copy: |
   rl3-templates baseline rendered.

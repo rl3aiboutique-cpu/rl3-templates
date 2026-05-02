@@ -2,9 +2,10 @@
 
 | Field | Value |
 |---|---|
-| Status | In progress |
+| Status | Phase 1 complete — pending tag + GitHub push |
 | Owner | RL3 AI Agency |
 | Created | 2026-05-02 |
+| Updated | 2026-05-02 (M1–M5 closed) |
 | Phase | 1 of 3 |
 | Coupling | **None** — Phase 1 ships standalone, no codi, no rl3-ci |
 
@@ -138,16 +139,16 @@ Emergency override: only two named human admins, configured server-side. Never t
 
 ## 8. Implementation milestones
 
-| # | Milestone | Output |
-|---|---|---|
-| 1 | Repository skeleton | `git init` on `master`, this `[PLAN]` doc, README, LICENSE, .gitignore, docs/_index.md. **Stage only — no commit until ack.** |
-| 2 | `copier.yml` + standalone hook scripts | `baseline/copier.yml`, all `scripts/hooks/*.sh`, `scripts/hooks/check_file_lines.py`. |
-| 3 | Jinja config templates | `.pre-commit-config.yaml.j2`, `.claude/settings.json.j2`, support configs (.gitleaks.toml, .yamllint.yaml). |
-| 4 | Drift-detection workflow + branch protection script | `.github/workflows/template-drift.yml`, `scripts/setup-branch-protection.sh`. |
-| 5 | Smoke render | `copier copy --src baseline` into `_self/` for each shape (python-only, ts-only, fullstack, infra). Verify hooks install + run. |
-| 6 | Ready-to-push state | Tag `v0.1.0` candidate, README final, [PLAN] doc marked "ready". Wait for go-ahead to push to GitHub. |
+| # | Milestone | Output | Status |
+|---|---|---|---|
+| 1 | Repository skeleton | `git init` on `master`, this `[PLAN]` doc, README, LICENSE, .gitignore, docs/_index.md. | DONE — commit `f1df5ec` |
+| 2 | `copier.yml` + standalone hook scripts | `baseline/copier.yml`, all 7 `scripts/hooks/*.sh`, `scripts/hooks/check_file_lines.py`. | DONE — squashed into `af4aa4d` |
+| 3 | Jinja config templates | `.pre-commit-config.yaml.jinja` (7 blocks), `.claude/settings.json.jinja`, `.gitleaks.toml`, `.yamllint.yaml`, `.codespellrc`. | DONE — squashed into `af4aa4d` |
+| 4 | Drift-detection workflow + branch protection script + CLAUDE.md.jinja | `.github/workflows/template-drift.yml`, `scripts/setup-branch-protection.sh`, `CLAUDE.md.jinja`. | DONE — squashed into `af4aa4d` |
+| 5 | Smoke render | `copier copy` into 4 sandboxes (python, ts, fullstack, infra). All 17 files render; YAML / JSON / CLAUDE.md valid; 7/7 hooks executable; `.copier-answers.yml` persisted; `guard-bash.sh` blocks `--no-verify` in all 4. | DONE — `.copier-answers.yml.jinja` added + `_tasks` consolidated |
+| 6 | Ready-to-push state | Tag `v0.1.0` candidate, [PLAN] doc marked complete, smoke-test tag `v0.0.1-dev` removed. | IN PROGRESS |
 
-Each milestone produces a tree diff + git status. No milestone moves forward without explicit ack.
+End of M6 = ready for the separate go-ahead on (a) tag + GitHub push, then (b) retrofit PRs against the 7 consumer repos.
 
 ## 9. Deferred — Phase 2 and Phase 3
 
@@ -173,6 +174,8 @@ Lowest risk first:
 
 | # | Item | Status |
 |---|---|---|
-| O1 | GitHub admin handles for `CODEOWNERS` emergency override | TODO before retrofit phase |
-| O2 | Smoke-test sandbox location (`_self/` inside this repo? `/tmp/`?) | Default `_self/`, gitignored |
-| O3 | Versioning policy for the `baseline` template tag (semver vs date) | Default semver, `v0.1.0` after Milestone 5 |
+| O1 | GitHub admin handles for `CODEOWNERS` emergency override | OPEN — required before retrofit phase |
+| O2 | Smoke-test sandbox location | RESOLVED — `/tmp/rl3-smoke-{python,ts,fullstack,infra}` (transient) |
+| O3 | Versioning policy for the `baseline` template tag | RESOLVED — semver, `v0.1.0` for first GitHub release |
+| O4 | rl3-templates dogfooding its own hooks on itself | OPEN — chicken-and-egg, plan to bootstrap manually post-push |
+| O5 | Render-time validation of CLAUDE.md against existing repo CLAUDE.md (preserve project-specific notes) | OPEN — Copier `--conflict rej` handles via 3-way merge in retrofit phase |
