@@ -124,6 +124,9 @@ repos:
           ' --
         language: system
         types: [text]
+        # Documentation files describe the rule by mentioning "TODO" — they
+        # would otherwise trigger this hook on every commit.
+        exclude: '^(CLAUDE\.md|\.pre-commit-config\.yaml|docs/.*_\[GUIDE\]_.*\.md|docs/.*_\[PLAN\]_.*\.md)$'
 
       - id: not-implemented-stub
         name: forbid NotImplementedError / "not implemented" stubs
@@ -156,11 +159,18 @@ repos:
           ' --
         language: system
         types: [text]
+        # Documentation files describe the rule by mentioning the trailer —
+        # they would otherwise trigger this hook on every commit.
+        exclude: '^(CLAUDE\.md|docs/.*_\[GUIDE\]_.*\.md|docs/.*_\[PLAN\]_.*\.md)$'
 
       - id: forbid-edits-to-generated
         name: block manual edits to generated files
         entry: "this file is generated — do not hand-edit"
         language: fail
+        # .copier-answers.yml is intentionally NOT listed here — it is created
+        # on the bootstrap commit and refreshed on every `copier update`. The
+        # Layer-B guard-write.sh hook (Claude PreToolUse) is the right gate to
+        # catch agent edits to this file.
         files: |
           (?x)^(
             {%- if has_typescript %}
@@ -170,7 +180,6 @@ repos:
             {%- endif %}
             .*_pb2\.py$
             | .*\.lock$
-            | \.copier-answers\.yml$
           )
 {% endif %}
 
