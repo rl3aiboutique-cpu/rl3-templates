@@ -24,15 +24,13 @@
 set -uo pipefail
 
 MARKER_BEGIN="# rl3-templates: managed BEGIN"
-MARKER_END="# rl3-templates: managed END"
 
 log()  { printf '[migrate-ignore-files] %s\n' "$*"; }
-warn() { printf '[migrate-ignore-files] WARN: %s\n' "$*" >&2; }
 fail() { printf '[migrate-ignore-files] ERROR: %s\n' "$*" >&2; exit 1; }
 
 # ── Pre-conditions ─────────────────────────────────────────────────────────
 git rev-parse --show-toplevel >/dev/null 2>&1 || fail "not a git repo"
-cd "$(git rev-parse --show-toplevel)"
+cd "$(git rev-parse --show-toplevel)" || fail "cd to repo root failed"
 
 # ── Per-file migration ─────────────────────────────────────────────────────
 migrate_file() {
