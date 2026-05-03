@@ -22,14 +22,9 @@
 {%- if enable_branch_policy %}
       "Bash(git checkout {{ integration_branch }})",
       "Bash(git switch {{ integration_branch }})",
-      "Bash(git rebase * {{ integration_branch }})",
 {%- endif %}
       "Bash(git reset --hard *)",
-      "Bash(git rebase * {{ production_branch }})",
       "Bash(git config --global *)",
-      "Bash(rm -rf /*)",
-      "Bash(rm -rf ~*)",
-      "Bash(chmod -R *)",
       "Bash(pip install *)",
       "Edit(.env)",
       "Edit(.env.local)",
