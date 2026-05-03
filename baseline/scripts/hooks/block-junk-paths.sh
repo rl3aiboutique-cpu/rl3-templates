@@ -88,7 +88,11 @@ ALLOW_PATTERNS=(
 )
 
 # Read staged file list. Empty on rebases, merges with no changes, etc.
-mapfile -t STAGED < <(git diff --cached --name-only --diff-filter=ACMR 2>/dev/null)
+# `mapfile` is bash 4+ only; macOS ships bash 3.2, so use a portable read loop.
+STAGED=()
+while IFS= read -r line; do
+  STAGED+=("$line")
+done < <(git diff --cached --name-only --diff-filter=ACMR 2>/dev/null)
 [ "${#STAGED[@]}" -eq 0 ] && exit 0
 
 VIOLATIONS=()

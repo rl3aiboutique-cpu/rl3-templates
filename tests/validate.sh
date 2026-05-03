@@ -20,7 +20,7 @@ git config user.name  "lehidalgo"
 git config user.email "le.hidalgot@gmail.com"
 
 echo "=== Rendering fullstack template into $SBX ==="
-uvx --quiet --from copier copier copy --quiet --trust --defaults \
+uvx --quiet --from copier copier copy --quiet --trust --defaults --vcs-ref HEAD \
   --data project_slug=validation \
   --data has_python=true \
   --data has_typescript=true \
