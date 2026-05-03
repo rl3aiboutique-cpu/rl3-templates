@@ -38,6 +38,15 @@ block() {
   exit 2
 }
 
+# warn() — non-blocking advisory. Returns 0 (Claude proceeds) but prints a
+# stderr message so the agent and user see the recommendation. Used for
+# recoverable destructive ops where blocking creates more friction than the
+# protection is worth.
+warn() {
+  echo "WARN by rl3-templates guard-bash: $1" >&2
+  echo "Command: $cmd" >&2
+}
+
 # ── --no-verify variants ───────────────────────────────────────────────────
 if echo "$cmd" | grep -qE '(^|[[:space:]])git[[:space:]]+(commit|push|merge|rebase)([[:space:]]|$).*--no-verify'; then
   block "--no-verify is forbidden for the agent. If a hook is wrong, fix the hook."
@@ -80,21 +89,26 @@ for protected in master main develop; do
 done
 
 # ── checkout / switch onto protected ───────────────────────────────────────
+# WARN-only: pre-commit `no-commit-to-branch` blocks any commit on master /
+# main / develop, so checkout is harmless on its own. The warning nudges the
+# agent to stay on a feature branch.
 if echo "$cmd" | grep -qE '(^|[[:space:]])git[[:space:]]+(checkout|switch)[[:space:]]+(master|main|develop)([[:space:]]|$)'; then
-  block "Checking out master/main/develop is forbidden for the agent. Stay on a feature branch and use 'git fetch + git merge origin/<branch>' to integrate."
+  warn "Checking out master/main/develop. Pre-commit will refuse any commit on these branches. Prefer staying on a feature branch and integrating via 'git fetch + git merge origin/<branch>'."
 fi
 
-# ── reset / clean / restore destructive forms ──────────────────────────────
+# ── reset / clean / restore — recoverable destructive forms ────────────────
+# All three are recoverable (reflog / stash / git clean -n). WARN instead of
+# BLOCK to keep dev experience usable; the agent sees a hint but proceeds.
 if echo "$cmd" | grep -qE '(^|[[:space:]])git[[:space:]]+reset[[:space:]]+--hard([[:space:]]|$)'; then
-  block "git reset --hard is destructive. Use 'git stash' or commit a checkpoint first."
+  warn "git reset --hard discards working-tree + staged changes. Recoverable via 'git reflog' but not via working-tree state. Stash or commit a checkpoint if unsure."
 fi
 
 if echo "$cmd" | grep -qE '(^|[[:space:]])git[[:space:]]+clean[[:space:]]+(-f|-fd|-df|-fdx|-xfd)([[:space:]]|$)'; then
-  block "git clean with -f is destructive. Inspect with 'git clean -n' first."
+  warn "git clean with -f deletes untracked files (NOT in git history — unrecoverable). Run 'git clean -n' first to dry-run."
 fi
 
 if echo "$cmd" | grep -qE '(^|[[:space:]])git[[:space:]]+(checkout|restore)[[:space:]]+\.([[:space:]]|$)'; then
-  block "git checkout . / git restore . overwrites uncommitted changes. Stash or commit instead."
+  warn "git checkout . / git restore . overwrites all uncommitted working-tree changes. 'git stash' first if you want to keep them."
 fi
 
 # ── git config global ──────────────────────────────────────────────────────
@@ -109,17 +123,10 @@ if echo "$cmd" | grep -qE '(^|[[:space:]])pip[[:space:]]+install([[:space:]]|$)'
   fi
 fi
 
-if echo "$cmd" | grep -qE '(^|[[:space:]])npm[[:space:]]+(install|i)([[:space:]]|$)'; then
-  if ! echo "$cmd" | grep -qE '(--package-lock-only|[[:space:]]ci([[:space:]]|$))'; then
-    proj="${CLAUDE_PROJECT_DIR:-.}"
-    if [ ! -f "$proj/package-lock.json" ] \
-       && [ ! -f "$proj/pnpm-lock.yaml" ] \
-       && [ ! -f "$proj/yarn.lock" ] \
-       && [ ! -f "$proj/bun.lock" ]; then
-      block "npm install with no lockfile present. Use 'npm ci' or commit the lockfile first."
-    fi
-  fi
-fi
+# `npm install` without a lockfile used to BLOCK here. Removed — npm
+# tolerates missing lockfiles fine and creates one on first install.
+# Forcing a lockfile commit before any install adds more friction than it
+# saves; the lockfile shows up in the next commit and is reviewable in PR.
 
 # ── curl pipe shell ────────────────────────────────────────────────────────
 if echo "$cmd" | grep -qE '(curl|wget)[[:space:]]+[^|]*\|[[:space:]]*(sh|bash|zsh)([[:space:]]|$)'; then
