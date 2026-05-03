@@ -6,6 +6,7 @@ One-line index of every Markdown document in this repository. Update on every do
 |---|---|---|
 | `20260502_201709_[PLAN]_baseline-template-implementation.md` | current | Phase 1 implementation plan for the `baseline` template (standalone hooks + agent guardrails, no codi/rl3-ci coupling). |
 | `20260502_213135_[GUIDE]_hooks-and-policy-reference.md` | current | **Canonical reference.** Every hook, every rule, every Copier flag, every policy — with detailed tables. Read first. |
+| `20260503_083046_[GUIDE]_update-process.md` | current | How a change in rl3-templates propagates to every consumer repo — author flow, weekly cron sync, conflict handling, pinning, rollback. |
 | `20260502_212730_[REPORT]_baseline-validation.md` | current | End-to-end validation report — 91/91 tests pass on the rendered fullstack sandbox; covers all 8 hook scripts, pre-commit config, and Claude settings. |
 
 ## Conventions
