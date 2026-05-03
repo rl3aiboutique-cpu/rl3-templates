@@ -68,21 +68,12 @@ repos:
       - id: check-executables-have-shebangs
 
   # ─── Block 2: secrets + supply chain ────────────────────────────────────
-  - repo: https://github.com/gitleaks/gitleaks
-    rev: v8.30.0
-    hooks:
-      - id: gitleaks
-        args: ["--no-banner"]
-
+  # Order: fail-fast cheapest-first.
+  #   1. forbid-env-file / forbid-credentials   — instant `language: fail` glob check
+  #   2. scan-agent-configs                     — bash, ~50ms
+  #   3. gitleaks                               — single binary, scales with diff size (slowest in block)
   - repo: local
     hooks:
-      - id: scan-agent-configs
-        name: scan agent / MCP config files for secrets (Sandworm-mode mitigation)
-        entry: bash scripts/hooks/scan-agent-configs.sh
-        language: system
-        always_run: true
-        pass_filenames: false
-
       - id: forbid-env-file
         name: forbid committing .env / .env.* (use .env.example)
         entry: ".env / .env.* must not be committed"
@@ -95,6 +86,19 @@ repos:
         entry: "private keys, certificates, and credentials must not be committed"
         language: fail
         files: '\.(pem|key|p12|pfx|jks|keystore)$|/id_rsa$|/credentials\.json$'
+
+      - id: scan-agent-configs
+        name: scan agent / MCP config files for secrets (Sandworm-mode mitigation)
+        entry: bash scripts/hooks/scan-agent-configs.sh
+        language: system
+        always_run: true
+        pass_filenames: false
+
+  - repo: https://github.com/gitleaks/gitleaks
+    rev: v8.30.0
+    hooks:
+      - id: gitleaks
+        args: ["--no-banner"]
 
 {% if enable_anti_slop %}
   # ─── Block 3: anti-slop (AI-specific tier) ──────────────────────────────
