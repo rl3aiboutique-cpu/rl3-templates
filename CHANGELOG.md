@@ -8,6 +8,54 @@ All notable changes to this project. The format is based on [Keep a Changelog](h
 - Phase 2B planning: `enable_rl3_ci` flag → renders thin CI caller targeting `rl3aiboutique-cpu/rl3-ci@v1`. Trigger met (3+ retrofits merged).
 - Open Item O4: rl3-templates dogfooding its own hooks on itself.
 
+## [0.2.4] — 2026-05-03
+
+### Added
+
+- **`baseline/.gitignore.jinja`** — first `.gitignore` shipped by the template. Managed BEGIN/END marker block with stack-gated sections (`has_python`, `has_typescript`, `has_docker`, `has_terraform`, `has_ansible`). Project-specific rules go below the END marker and survive `copier update`.
+- **`baseline/{% if has_docker %}.dockerignore{% endif %}.jinja`** — minimises Docker build context. Only rendered when `has_docker=true`. Same managed-block pattern.
+- **`baseline/scripts/hooks/block-junk-paths.sh`** — pre-commit hook that refuses to commit `node_modules/`, `dist/`, `build/`, `.venv/`, `__pycache__/`, `.next/`, `.terraform/`, `*.tfstate`, OS junk, logs, and editor swap files. Load-bearing fail-loud guard for cases where `.gitignore` is broken or missing. Bypass: `RL3_ALLOW_JUNK_PATHS=1`.
+- **`baseline/scripts/migrate-ignore-files.sh`** — one-time migration helper for consumers upgrading from a pre-v0.2.4 template version. Recovers project-specific `.gitignore` / `.dockerignore` rules from `git show HEAD:.gitignore` and appends them below the END marker. Idempotent.
+- **`docs/[PLAN]_ignore-files-overhaul.md`** — design doc for this release.
+
+### Changed
+
+- **`baseline/.pre-commit-config.yaml.jinja`** — registers `block-junk-paths` in Block 2 (secrets + supply chain).
+
+### Fixed
+
+- **`conventional-pre-commit`** — args use POSITIONAL types syntax for v4.x compatibility (folded from `feature/lehidalgo/v0.2.3-conventional-fix`).
+- **`tests/validate.sh`** — refreshed stale assertions; added 8 new tests covering the v0.2.4 surface.
+
+### Migration (existing consumers, required first time only)
+
+```bash
+git fetch origin
+git checkout -b chore/<git-username>/v0.2.4-update develop
+copier update --skip-answered --trust
+bash scripts/migrate-ignore-files.sh
+git diff -- .gitignore .dockerignore
+git add .gitignore .dockerignore .pre-commit-config.yaml scripts/
+git commit -m "chore: adopt rl3-templates baseline v0.2.4"
+```
+
+If a consumer is currently tracking `node_modules/` or `dist/`, follow the migration step with a cleanup PR:
+
+```bash
+git rm -r --cached <bloated-paths>
+git commit -m "chore: stop tracking <paths> (rl3-templates v0.2.4)"
+```
+
+Defer history rewrite (`git filter-repo`) to a planned window; force-pushing develop and main rewrites SHAs and busts every CI cache.
+
+### Verified
+
+- `tests/validate.sh`: target ~105 / 105 PASS (97 baseline + 8 new ignore-file tests).
+- Fresh fullstack render: `.gitignore` contains BEGIN marker + `node_modules/` + `__pycache__/`.
+- Fresh `has_docker=false` render: no `.dockerignore` file present.
+- `block-junk-paths.sh` blocks `git add frontend/node_modules/foo.js` with clear error.
+- `migrate-ignore-files.sh` is idempotent (second run is a no-op).
+
 ## [0.2.1] — 2026-05-03
 
 ### Fixed
@@ -59,7 +107,8 @@ All notable changes to this project. The format is based on [Keep a Changelog](h
 - Copier 9.x with `_subdirectory: "baseline"`, `_templates_suffix: ".jinja"`, managed-content markers for in-place updates.
 - Standalone — no codi or rl3-ci coupling. Both planned as opt-in flags in later phases.
 
-[Unreleased]: https://github.com/rl3aiboutique-cpu/rl3-templates/compare/v0.2.1...HEAD
+[Unreleased]: https://github.com/rl3aiboutique-cpu/rl3-templates/compare/v0.2.4...HEAD
+[0.2.4]: https://github.com/rl3aiboutique-cpu/rl3-templates/compare/v0.2.3...v0.2.4
 [0.2.1]: https://github.com/rl3aiboutique-cpu/rl3-templates/compare/v0.2.0...v0.2.1
 [0.2.0]: https://github.com/rl3aiboutique-cpu/rl3-templates/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/rl3aiboutique-cpu/rl3-templates/releases/tag/v0.1.0
