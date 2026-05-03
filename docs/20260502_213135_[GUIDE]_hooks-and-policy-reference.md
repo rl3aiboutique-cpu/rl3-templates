@@ -2,10 +2,10 @@
 
 | Field | Value |
 |---|---|
-| Status | current — Phase 1 / v0.1.0 |
+| Status | current — v0.2.1 |
 | Audience | Engineers and AI coding agents working in any RL3 repository |
 | Source of truth | This document. Per-repo `CLAUDE.md` is a summary; this is the full reference. |
-| Updated | 2026-05-02 |
+| Updated | 2026-05-03 (v0.2.1 fixes documented in §13) |
 
 This guide documents every hook, rule, configuration knob, and policy that the `baseline` template installs into a consumer repository. Each section is self-contained — read top to bottom, or jump to the hook you care about.
 
@@ -554,3 +554,17 @@ The rendered `baseline` produces these files in the consumer repo. The first col
 | `scripts/hooks/check_file_lines.py` | `scripts/hooks/check_file_lines.py` | no |
 
 17 files total. Every consumer repo ends up byte-identical for the static files and consistent (per its answers) for the templated files.
+
+## 13. v0.2.1 changelog (vs v0.2.0)
+
+Five fixes from Phase-2A retrofit feedback. None changed hook behaviour for legitimate cases — all closed false positives or false blocks that made the bootstrap commit noisy.
+
+| Hook / file | Change |
+|---|---|
+| `orphan-todo` | added `exclude:` for `CLAUDE.md`, `.pre-commit-config.yaml`, `docs/*_[GUIDE]_*.md`, `docs/*_[PLAN]_*.md` — those files describe the rule by mentioning the literal word "TODO" |
+| `forbid-coauthor-claude` | same exclusion pattern — docs that document the forbidden trailer were tripping the hook |
+| `forbid-edits-to-generated` | dropped `.copier-answers.yml` from the `files:` pattern — it is created on the bootstrap commit, refreshed on every `copier update`. Layer-B `guard-write.sh` is the right gate for agent edits |
+| `.yamllint.yaml` | bumped `empty-lines.max` from 2 (default) to 10 — Jinja conditionals in `.pre-commit-config.yaml.jinja` collapse to ~6 consecutive blanks; raising to 10 leaves headroom |
+| `.codespellrc` | removed `mis-match`, `quater`, `nd` from `ignore-words-list` — these are codespell-only entries that `typos` doesn't honor and was flagging as real typos |
+
+Plus one new doc — `docs/[GUIDE]_update-process.md` — covering the full author + consumer sync flow.
