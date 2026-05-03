@@ -318,9 +318,21 @@ repos:
     hooks:
       - id: conventional-pre-commit
         stages: [commit-msg]
+        # conventional-pre-commit v4.x takes types as POSITIONAL args, not
+        # --types=joined. The joined form fails with "unrecognized arguments".
         args:
           - --strict
-          - --types=feat,fix,docs,refactor,test,chore,perf,ci,build,style,revert
+          - feat
+          - fix
+          - docs
+          - refactor
+          - test
+          - chore
+          - perf
+          - ci
+          - build
+          - style
+          - revert
 
   - repo: local
     hooks:
