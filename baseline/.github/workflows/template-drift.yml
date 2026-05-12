@@ -15,8 +15,16 @@ name: template-drift
 # values come from internal step outputs and repo secrets.
 
 on:
-  schedule:
-    - cron: "0 9 * * 1"
+  # Scheduled trigger removed 2026-05-12 in this baseline so that
+  # `copier copy` / `copier update` does NOT ship a broken cron to
+  # newly onboarded clients. The weekly run targets `base: <integration_branch>`
+  # which (a) may not exist on every client (e.g. devloop has no develop),
+  # and (b) was billing-blocked across the org. Each failed scheduled run
+  # consumes Actions minutes for zero value. Clients can still run the
+  # drift check on demand from the Actions tab via workflow_dispatch.
+  # Re-enable the schedule here once a manual workflow_dispatch run on
+  # any client (sapphira / capellai / rl3-website / devloop / rl3-infra-vps)
+  # is observed to either open a clean PR or exit 0 with changed=false.
   workflow_dispatch: {}
 
 permissions:
