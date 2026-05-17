@@ -1,0 +1,8 @@
+# typos pre-commit hook config
+# Allowlist identifiers that look like typos but are intentional.
+# `extend-identifiers` is the right level here because typos otherwise
+# splits "hel1" into the token "hel" and flags it as a typo for "help".
+[default.extend-identifiers]
+hel1 = "hel1"   # Hetzner Helsinki datacenter code
+nbg1 = "nbg1"   # Hetzner Nuremberg
+fsn1 = "fsn1"   # Hetzner Falkenstein
