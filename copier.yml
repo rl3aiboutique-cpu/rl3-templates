@@ -137,9 +137,9 @@ file_line_cap:
 # ── Branch policy ──────────────────────────────────────────────────────────
 production_branch:
   type: str
-  default: master
-  choices: [master, main]
-  help: "Production branch name. RL3 default is master."
+  default: main
+  choices: [main, master]
+  help: "Production branch name. RL3 default is main (industry standard since 2020; master kept as opt-in for legacy repos)."
 
 integration_branch:
   type: str
@@ -151,7 +151,7 @@ enable_branch_policy:
   default: true
   help: |
     Enforce the full <prefix>/<git-username>/<slug> branch policy?
-    true  — full 5-branch flow (feature/bugfix/chore/release/hotfix → develop → master).
+    true  — full 5-branch flow (feature/bugfix/chore/release/hotfix → develop → main).
             Pre-push hooks (branch-naming, no-direct-push, branch-source-base) ON.
             Claude deny-list blocks pushes/checkouts to integration_branch.
     false — single-branch repos (e.g. small libraries with release-please).
