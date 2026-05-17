@@ -4,6 +4,15 @@ Project templates for RL3 AI Agency repositories. Built on [Copier](https://copi
 
 ## Status
 
+**v0.3.0 — config cleanup (industry-alignment release).** Defaults realigned with FastAPI canonical (`fastapi/fastapi` + `full-stack-fastapi-template`):
+
+- `python_type_checker` default → **mypy-strict** (was `pyright`). Pick ONE — running pyright + mypy in parallel reports different errors, see `[REPORT]_config-audit-v0.3.0.md`.
+- `forbid-edits-to-generated` no longer blocks `*.lock` files. Lockfile drift is now detected via `uv lock --check` in pre-push (the Astral-recommended pattern).
+- `bandit` moved from Block 4 (every-commit) to Block 7 pre-push. Pre-commit should stay <5s per pre-commit.com.
+- `pytest-cov` removed from pre-push — industry pattern keeps full test suites in CI only.
+- `check-branch-name.sh` now respects a `.allowed-legacy-branches` allowlist (legacy PR branches predating the policy can opt out, file-tracked + reviewable).
+- New pre-push hook: `uv-lock-check` (runs `uv lock --check` when `pyproject.toml` or `uv.lock` change).
+
 **v0.1.0 — Phase 1 complete.** The `baseline` template ships:
 
 - Local pre-commit hooks (commit, commit-msg, pre-push tiers).
