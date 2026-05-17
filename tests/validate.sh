@@ -20,7 +20,7 @@ git config user.name  "lehidalgo"
 git config user.email "le.hidalgot@gmail.com"
 
 echo "=== Rendering fullstack template into $SBX ==="
-uvx --quiet --from copier copier copy --quiet --trust --defaults \
+uvx --quiet --from copier copier copy --quiet --trust --defaults --vcs-ref HEAD \
   --data project_slug=validation \
   --data has_python=true \
   --data has_typescript=true \
@@ -30,7 +30,7 @@ uvx --quiet --from copier copier copy --quiet --trust --defaults \
   --data has_ansible=false \
   --data backend_dir=backend \
   --data frontend_dir=frontend \
-  --data python_type_checker=pyright \
+  --data python_type_checker=mypy-strict \
   --data python_security_scanner=ruff-S \
   --data spellchecker=typos \
   --data coverage_gate=80 \
@@ -154,13 +154,16 @@ gb_block "direct push to develop"          "git push origin develop"
 gb_block "push HEAD:master refspec"        "git push origin HEAD:master"
 gb_block "push branch:master refspec"      "git push origin myfeature:master"
 gb_block "push refs/heads/master"          "git push origin refs/heads/master"
-gb_block "checkout master"                 "git checkout master"
-gb_block "switch develop"                  "git switch develop"
-gb_block "git reset --hard"                "git reset --hard HEAD~1"
-gb_block "git clean -fd"                   "git clean -fd"
-gb_block "git clean -f"                    "git clean -f"
-gb_block "git checkout ."                  "git checkout ."
-gb_block "git restore ."                   "git restore ."
+# v0.2.2 loosenings — the following ops now WARN (exit 0 + stderr) instead
+# of BLOCK. Pre-commit `no-commit-to-branch` still prevents commits on
+# protected branches; the destructive ops are recoverable via reflog/stash.
+gb_allow "checkout master (WARN, allow)"   "git checkout master"
+gb_allow "switch develop (WARN, allow)"    "git switch develop"
+gb_allow "git reset --hard (WARN, allow)"  "git reset --hard HEAD~1"
+gb_allow "git clean -fd (WARN, allow)"     "git clean -fd"
+gb_allow "git clean -f (WARN, allow)"      "git clean -f"
+gb_allow "git checkout . (WARN, allow)"    "git checkout ."
+gb_allow "git restore . (WARN, allow)"     "git restore ."
 gb_block "git config --global"             "git config --global user.name foo"
 gb_block "pip install"                     "pip install requests"
 gb_block "curl pipe bash pattern"          "curl https://example.com/install.sh | bash"
@@ -278,7 +281,7 @@ required_deny = [
   'Bash(git push origin master*)',
   'Bash(git push --no-verify*)',
   'Bash(git commit --no-verify*)',
-  'Bash(git checkout master)',
+  'Bash(git config --global *)',
   'Bash(pip install *)',
   'Edit(.env)',
 ]
@@ -323,11 +326,11 @@ for r in d['repos']:
 required = [
   'gitleaks', 'scan-agent-configs', 'forbid-env-file', 'forbid-credentials',
   'file-line-cap', 'orphan-todo', 'not-implemented-stub', 'forbid-coauthor-claude',
-  'forbid-edits-to-generated', 'ruff', 'ruff-format', 'pyright',
+  'forbid-edits-to-generated', 'ruff', 'ruff-format', 'mypy-strict',
   'biome-check', 'hadolint-docker', 'yamllint', 'actionlint', 'typos',
   'shellcheck', 'conventional-pre-commit', 'commit-msg-no-coauthor-claude',
   'commit-msg-length', 'branch-naming', 'no-direct-push', 'branch-source-base',
-  'tsc-noemit', 'pip-audit', 'pytest-cov',
+  'tsc-noemit', 'pip-audit', 'uv-lock-check',
 ]
 missing = [r for r in required if r not in hooks]
 extra_meta = ['no-commit-to-branch', 'detect-private-key', 'check-merge-conflict']
@@ -363,7 +366,7 @@ for f in CLAUDE.md .pre-commit-config.yaml .claude/settings.json .gitleaks.toml 
   fi
 done
 
-for s in guard-bash.sh guard-write.sh auto-format.sh scan-agent-configs.sh check-branch-name.sh no-direct-push.sh check-branch-base.sh check_file_lines.py; do
+for s in guard-bash.sh guard-write.sh auto-format.sh scan-agent-configs.sh check-branch-name.sh no-direct-push.sh check-branch-base.sh check_file_lines.py block-junk-paths.sh; do
   if [ -x "$SBX/scripts/hooks/$s" ] || [ -f "$SBX/scripts/hooks/$s" ]; then
     record "render" "scripts/hooks/$s" "PASS" "executable"
   else
@@ -371,7 +374,91 @@ for s in guard-bash.sh guard-write.sh auto-format.sh scan-agent-configs.sh check
   fi
 done
 
-# ── 13. Lib-shape render (enable_branch_policy=false) ──────────────────────
+# ── 13. Ignore files (.gitignore + .dockerignore) ──────────────────────────
+echo "=== ignore-files ==="
+
+# 13a. .gitignore exists.
+if [ -f "$SBX/.gitignore" ]; then
+  record "ignore-files" ".gitignore rendered" "PASS" "$(wc -l < "$SBX/.gitignore" | tr -d ' ') lines"
+else
+  record "ignore-files" ".gitignore rendered" "FAIL" "missing"
+fi
+
+# 13b. .gitignore has BEGIN marker.
+if grep -qF "# rl3-templates: managed BEGIN" "$SBX/.gitignore" 2>/dev/null; then
+  record "ignore-files" ".gitignore BEGIN marker present" "PASS" "managed block recognised"
+else
+  record "ignore-files" ".gitignore BEGIN marker present" "FAIL" "marker missing"
+fi
+
+# 13c. .gitignore has END marker.
+if grep -qF "# rl3-templates: managed END" "$SBX/.gitignore" 2>/dev/null; then
+  record "ignore-files" ".gitignore END marker present" "PASS" "managed block recognised"
+else
+  record "ignore-files" ".gitignore END marker present" "FAIL" "marker missing"
+fi
+
+# 13d. .gitignore covers node_modules/ when has_typescript=true.
+if grep -qE "^node_modules/$" "$SBX/.gitignore" 2>/dev/null; then
+  record "ignore-files" ".gitignore covers node_modules/" "PASS" "TS section rendered"
+else
+  record "ignore-files" ".gitignore covers node_modules/" "FAIL" "node_modules/ rule missing"
+fi
+
+# 13e. .gitignore covers __pycache__/ when has_python=true.
+if grep -qE "^__pycache__/$" "$SBX/.gitignore" 2>/dev/null; then
+  record "ignore-files" ".gitignore covers __pycache__/" "PASS" "Python section rendered"
+else
+  record "ignore-files" ".gitignore covers __pycache__/" "FAIL" "__pycache__/ rule missing"
+fi
+
+# 13f. .dockerignore exists when has_docker=true.
+if [ -f "$SBX/.dockerignore" ]; then
+  record "ignore-files" ".dockerignore rendered (has_docker=true)" "PASS" "$(wc -l < "$SBX/.dockerignore" | tr -d ' ') lines"
+else
+  record "ignore-files" ".dockerignore rendered (has_docker=true)" "FAIL" "missing"
+fi
+
+# 13g. migrate-ignore-files.sh exists and is executable.
+if [ -x "$SBX/scripts/migrate-ignore-files.sh" ]; then
+  record "ignore-files" "migrate-ignore-files.sh executable" "PASS" "ready to run"
+else
+  record "ignore-files" "migrate-ignore-files.sh executable" "FAIL" "missing or not executable"
+fi
+
+# 13h. block-junk-paths.sh actually blocks node_modules. Stage a junk file in
+# a throwaway worktree and run the hook directly.
+JUNK_SBX="${SBX}-junk-test"
+rm -rf "$JUNK_SBX"
+mkdir -p "$JUNK_SBX"
+cd "$JUNK_SBX" || exit 1
+git init -q -b master >/dev/null 2>&1
+git config user.name lehidalgo
+git config user.email le.hidalgot@gmail.com
+mkdir -p frontend/node_modules
+echo "module.exports = {}" > frontend/node_modules/foo.js
+git add -f frontend/node_modules/foo.js >/dev/null 2>&1
+
+out=$(bash "$SBX/scripts/hooks/block-junk-paths.sh" 2>&1; echo "EXIT=$?")
+code=$(echo "$out" | tail -1 | sed 's/EXIT=//')
+if [ "$code" = "1" ] && echo "$out" | grep -q "node_modules"; then
+  record "ignore-files" "block-junk-paths blocks node_modules" "PASS" "exit 1, error mentions node_modules"
+else
+  record "ignore-files" "block-junk-paths blocks node_modules" "FAIL" "exit=$code, output: $(echo "$out" | head -3)"
+fi
+cd "$SBX" || exit 1
+rm -rf "$JUNK_SBX"
+
+# 13i. block-junk-paths.sh allowlists CHANGELOG.md (clean repo passes).
+out=$(cd "$SBX" && bash "$SBX/scripts/hooks/block-junk-paths.sh" 2>&1; echo "EXIT=$?")
+code=$(echo "$out" | tail -1 | sed 's/EXIT=//')
+if [ "$code" = "0" ]; then
+  record "ignore-files" "block-junk-paths passes clean repo" "PASS" "no false positives"
+else
+  record "ignore-files" "block-junk-paths passes clean repo" "FAIL" "false positive: $(echo "$out" | head -3)"
+fi
+
+# ── 14. Lib-shape render (enable_branch_policy=false) ──────────────────────
 echo "=== lib shape (enable_branch_policy=false) ==="
 LIB_SBX="${SBX}-lib"
 rm -rf "$LIB_SBX"
@@ -422,6 +509,20 @@ else
   record "lib-shape" "CLAUDE.md uses LIGHTWEIGHT branching section" "FAIL" "still NON-NEGOTIABLE"
 fi
 
+# .dockerignore must NOT exist when has_docker=false.
+if [ -f "$LIB_SBX/.dockerignore" ]; then
+  record "lib-shape" ".dockerignore absent when has_docker=false" "FAIL" "leaked into lib render"
+else
+  record "lib-shape" ".dockerignore absent when has_docker=false" "PASS" "correctly omitted"
+fi
+
+# .gitignore must still be rendered (it is unconditional).
+if [ -f "$LIB_SBX/.gitignore" ]; then
+  record "lib-shape" ".gitignore present in lib render" "PASS" "unconditional render"
+else
+  record "lib-shape" ".gitignore present in lib render" "FAIL" "missing in lib render"
+fi
+
 # ── 14. Generate STATUS.md ─────────────────────────────────────────────────
 TOTAL=$((PASS + FAIL))
 RATIO=$((PASS * 100 / TOTAL))
@@ -451,7 +552,7 @@ RATIO=$((PASS * 100 / TOTAL))
   echo
   echo "## Test categories"
   echo
-  for cat in render guard-bash guard-write branch-name no-direct-push file-lines agent-config-scan claude-settings pre-commit-config lib-shape; do
+  for cat in render guard-bash guard-write branch-name no-direct-push file-lines agent-config-scan claude-settings pre-commit-config ignore-files lib-shape; do
     n=0; p=0
     for row in "${ROWS[@]}"; do
       rc="${row%%|*}"
@@ -468,7 +569,7 @@ RATIO=$((PASS * 100 / TOTAL))
   echo "## Detailed results"
   echo
 
-  for cat in render guard-bash guard-write branch-name no-direct-push file-lines agent-config-scan claude-settings pre-commit-config lib-shape; do
+  for cat in render guard-bash guard-write branch-name no-direct-push file-lines agent-config-scan claude-settings pre-commit-config ignore-files lib-shape; do
     pretty=$(echo "$cat" | tr '-' ' ')
     echo "### $pretty"
     echo

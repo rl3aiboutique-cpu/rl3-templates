@@ -17,6 +17,11 @@ rules:
   braces:
     max-spaces-inside: 1
     level: warning
+  # Templated files (.pre-commit-config.yaml from rl3-templates) leave
+  # blank-line gaps where Jinja conditionals collapse. 10 leaves headroom
+  # for future flag combinations without re-tuning.
+  empty-lines:
+    max: 10
 
 ignore: |
   node_modules/
