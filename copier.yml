@@ -87,9 +87,9 @@ python_type_checker:
     - ty
     - mypy-strict
     - none
-  default: pyright
+  default: mypy-strict
   when: "{{ has_python }}"
-  help: "Type checker. pyright is the modern default; ty is the Astral Rust-fast cutting edge; mypy-strict is legacy."
+  help: "Type checker. Pick ONE — running multiple is non-standard. mypy-strict is the FastAPI canonical (https://github.com/fastapi/fastapi uses mypy + ty; Pydantic mypy plugin is mature). pyright is the alternative (faster, stricter, weaker plugin ecosystem). ty is Astral's Rust-fast newcomer (experimental, not yet production-ready)."
 
 python_security_scanner:
   type: str
@@ -120,7 +120,7 @@ coverage_gate:
 include_pre_push_tier:
   type: bool
   default: true
-  help: "Run pip-audit + pytest cov on pre-push (heavier, ~30s)."
+  help: "Run heavier validations on pre-push (tsc-noemit + pip-audit + bandit; ~10-20s). pytest stays in CI (industry pattern: pre-commit/pre-push fast, full-suite tests in CI)."
 
 # ── Anti-slop ──────────────────────────────────────────────────────────────
 enable_anti_slop:

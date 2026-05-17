@@ -26,6 +26,27 @@ set -euo pipefail
 
 branch=$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo "HEAD")
 
+# ── Legacy-branch allowlist ───────────────────────────────────────────────
+# Branches that predate this policy can opt out by listing themselves
+# (one per line, exact match) in `.allowed-legacy-branches` at repo root.
+# Comments (#) and blank lines are ignored.
+#
+# This is intentionally a file (not an env var) so the allowlist is
+# committed and reviewable, and so the exception list shrinks as legacy
+# branches are merged or deleted.
+allowlist_file="$(git rev-parse --show-toplevel)/.allowed-legacy-branches"
+if [ -f "$allowlist_file" ]; then
+  while IFS= read -r legacy; do
+    legacy="${legacy%%#*}"          # strip inline comments
+    legacy="${legacy## }"; legacy="${legacy%% }"  # trim spaces
+    [ -z "$legacy" ] && continue    # skip blank lines
+    if [ "$branch" = "$legacy" ]; then
+      echo "INFO: '$branch' is in .allowed-legacy-branches — skipping naming policy." >&2
+      exit 0
+    fi
+  done < "$allowlist_file"
+fi
+
 # ── Derive normalised git username ────────────────────────────────────────
 gituser=$(git config user.name 2>/dev/null || echo "")
 if [ -z "$gituser" ]; then
