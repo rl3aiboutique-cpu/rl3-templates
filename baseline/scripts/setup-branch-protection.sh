@@ -33,7 +33,7 @@ get_answer() {
 
 PROD=$(get_answer "production_branch")
 INTEG=$(get_answer "integration_branch")
-PROD="${PROD:-master}"
+PROD="${PROD:-main}"
 INTEG="${INTEG:-develop}"
 PROD_REVIEWERS="${PROD_REVIEWERS:-2}"
 INTEG_REVIEWERS="${INTEG_REVIEWERS:-1}"
