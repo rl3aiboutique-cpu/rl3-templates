@@ -30,7 +30,7 @@ uvx --quiet --from copier copier copy --quiet --trust --defaults --vcs-ref HEAD 
   --data has_ansible=false \
   --data backend_dir=backend \
   --data frontend_dir=frontend \
-  --data python_type_checker=pyright \
+  --data python_type_checker=mypy-strict \
   --data python_security_scanner=ruff-S \
   --data spellchecker=typos \
   --data coverage_gate=80 \
@@ -326,11 +326,11 @@ for r in d['repos']:
 required = [
   'gitleaks', 'scan-agent-configs', 'forbid-env-file', 'forbid-credentials',
   'file-line-cap', 'orphan-todo', 'not-implemented-stub', 'forbid-coauthor-claude',
-  'forbid-edits-to-generated', 'ruff', 'ruff-format', 'pyright',
+  'forbid-edits-to-generated', 'ruff', 'ruff-format', 'mypy-strict',
   'biome-check', 'hadolint-docker', 'yamllint', 'actionlint', 'typos',
   'shellcheck', 'conventional-pre-commit', 'commit-msg-no-coauthor-claude',
   'commit-msg-length', 'branch-naming', 'no-direct-push', 'branch-source-base',
-  'tsc-noemit', 'pip-audit', 'pytest-cov',
+  'tsc-noemit', 'pip-audit', 'uv-lock-check',
 ]
 missing = [r for r in required if r not in hooks]
 extra_meta = ['no-commit-to-branch', 'detect-private-key', 'check-merge-conflict']
